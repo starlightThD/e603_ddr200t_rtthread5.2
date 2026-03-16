@@ -1,0 +1,11 @@
+../design/core/global.v
+../design/core/e603_core_rams.v
+../design/core/e603_core_wrapper.v
+../design/soc/e603_common_nice_decode.v
+../design/soc/e603_subsys_nice_core.v
+../design/soc/e603_soc_misc.v
+../design/tech/e603_gnrl_tech_clkgate.v
+../design/tech/e603_gnrl_tech_ram.v
+../design/tech/e603_gnrl_tech_sync.v
+../design/tech/e603_hand_buf.v
+../design/tech/e603_hand_mux_bit.v
