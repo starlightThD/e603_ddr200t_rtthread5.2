@@ -1,0 +1,388 @@
+#include "nuclei_sdk_soc.h"
+#include <rtthread.h>
+
+// 性能测试结果统计
+#define PERF_TEST_ITERATIONS 5000
+#define PERF_TEST_SMALL_ITER 100000
+
+// 全局变量用于性能测试
+static volatile rt_uint32_t perf_counter = 0;
+static rt_sem_t perf_sem = RT_NULL;
+static rt_mutex_t perf_mutex = RT_NULL;
+static rt_thread_t perf_thread1 = RT_NULL, perf_thread2 = RT_NULL;
+
+// 性能测试宏 - 使用块作用域避免变量重定义
+#define PERF_START() \
+    rt_tick_t perf_start_tick; \
+    do { perf_start_tick = rt_tick_get(); } while(0)
+
+#define PERF_END(test_name, iterations) \
+    do { \
+        rt_tick_t perf_end_tick = rt_tick_get(); \
+        rt_tick_t perf_elapsed = perf_end_tick - perf_start_tick; \
+        rt_uint32_t ops_per_tick = (iterations) / (perf_elapsed ? perf_elapsed : 1); \
+        rt_uint32_t ops_per_sec = ops_per_tick * RT_TICK_PER_SECOND; \
+        rt_kprintf("  %s: %d ticks, %d ops/sec\n", test_name, (int)perf_elapsed, (int)ops_per_sec); \
+    } while(0)
+
+// 线程切换性能测试
+static volatile rt_bool_t switch_test_running = RT_FALSE;
+static volatile rt_uint32_t switch_count1 = 0, switch_count2 = 0;
+
+static void switch_perf_thread1(void *parameter)
+{
+    while (switch_test_running)
+    {
+        switch_count1++;
+        rt_thread_yield();
+    }
+}
+
+static void switch_perf_thread2(void *parameter)
+{
+    while (switch_test_running)
+    {
+        switch_count2++;
+        rt_thread_yield();
+    }
+}
+
+// IPC性能测试线程
+static void sem_perf_thread(void *parameter)
+{
+    for (int i = 0; i < PERF_TEST_ITERATIONS; i++)
+    {
+        rt_sem_take(perf_sem, RT_WAITING_FOREVER);
+        perf_counter++;
+    }
+}
+
+static void mutex_perf_thread(void *parameter)
+{
+    for (int i = 0; i < PERF_TEST_ITERATIONS; i++)
+    {
+        rt_mutex_take(perf_mutex, RT_WAITING_FOREVER);
+        perf_counter++;
+        rt_mutex_release(perf_mutex);
+    }
+}
+
+// 内存分配性能测试
+static rt_uint32_t memory_alloc_performance(void)
+{
+    void *ptrs[100];
+    rt_uint32_t success_count = 0;
+    
+    PERF_START();
+    
+    for (int iter = 0; iter < 500; iter++)
+    {
+        // 分配
+        for (int i = 0; i < 100; i++)
+        {
+            ptrs[i] = rt_malloc(64 + (i % 32) * 4);
+            if (ptrs[i]) success_count++;
+        }
+        
+        // 释放
+        for (int i = 0; i < 100; i++)
+        {
+            if (ptrs[i])
+            {
+                rt_free(ptrs[i]);
+                ptrs[i] = RT_NULL;
+            }
+        }
+    }
+    
+    PERF_END("Memory alloc/free (50000 ops)", 50000);
+    return success_count;
+}
+
+// 系统调用开销测试
+static void syscall_overhead_test(void)
+{
+    rt_kprintf("\n[Performance] System Call Overhead Tests\n");
+    
+    // rt_tick_get() 性能
+    {
+        PERF_START();
+        for (int i = 0; i < PERF_TEST_SMALL_ITER; i++)
+        {
+            rt_tick_get();
+        }
+        PERF_END("rt_tick_get()", PERF_TEST_SMALL_ITER);
+    }
+    
+    // rt_thread_self() 性能
+    {
+        PERF_START();
+        for (int i = 0; i < PERF_TEST_SMALL_ITER; i++)
+        {
+            rt_thread_self();
+        }
+        PERF_END("rt_thread_self()", PERF_TEST_SMALL_ITER);
+    }
+    
+    // 临界区进入退出性能
+    {
+        PERF_START();
+        for (int i = 0; i < PERF_TEST_SMALL_ITER; i++)
+        {
+            rt_base_t level = rt_hw_interrupt_disable();
+            rt_hw_interrupt_enable(level);
+        }
+        PERF_END("Critical section enter/exit", PERF_TEST_SMALL_ITER);
+    }
+}
+
+// 简单的测试线程函数
+static void simple_test_thread(void *parameter)
+{
+    // 空函数，线程立即退出
+}
+
+// 线程调度性能测试
+static void thread_scheduling_performance(void)
+{
+    rt_kprintf("\n[Performance] Thread Scheduling Tests\n");
+    
+    // 线程创建/删除性能
+    PERF_START();
+    for (int i = 0; i < 300; i++)
+    {
+        rt_thread_t thread = rt_thread_create("perf_th", 
+                                            simple_test_thread, 
+                                            RT_NULL, 512, 25, 5);
+        if (thread)
+        {
+            rt_thread_startup(thread);
+            // 等待线程自动退出
+            rt_thread_delay(1);
+        }
+    }
+    PERF_END("Thread create/destroy (300 ops)", 300);
+    
+    // 线程切换性能测试
+    rt_kprintf("  Starting context switch performance test...\n");
+    
+    switch_test_running = RT_TRUE;
+    switch_count1 = 0;
+    switch_count2 = 0;
+    
+    perf_thread1 = rt_thread_create("switch1", switch_perf_thread1, RT_NULL, 512, 20, 5);
+    perf_thread2 = rt_thread_create("switch2", switch_perf_thread2, RT_NULL, 512, 20, 5);
+    
+    if (perf_thread1 && perf_thread2)
+    {
+        PERF_START();
+        rt_thread_startup(perf_thread1);
+        rt_thread_startup(perf_thread2);
+        
+        rt_thread_delay(200);  // 运行200个tick
+        switch_test_running = RT_FALSE;
+        
+        rt_thread_delay(10);   // 等待线程退出
+        
+        rt_tick_t elapsed = 200;
+        rt_uint32_t total_switches = switch_count1 + switch_count2;
+        rt_uint32_t switches_per_sec = (total_switches * RT_TICK_PER_SECOND) / elapsed;
+        
+        rt_kprintf("  Context switches: %d switches in %d ticks (%d switches/sec)\n",
+                  (int)total_switches, (int)elapsed, (int)switches_per_sec);
+    }
+}
+
+// IPC性能测试
+static void ipc_performance_test(void)
+{
+    rt_kprintf("\n[Performance] IPC Performance Tests\n");
+    
+    // 信号量性能测试
+    perf_sem = rt_sem_create("perf_sem", 0, RT_IPC_FLAG_FIFO);
+    if (perf_sem)
+    {
+        perf_counter = 0;
+        
+        rt_thread_t sem_thread = rt_thread_create("sem_perf", sem_perf_thread, 
+                                                 RT_NULL, 512, 20, 10);
+        if (sem_thread)
+        {
+            rt_thread_startup(sem_thread);
+            
+            PERF_START();
+            for (int i = 0; i < PERF_TEST_ITERATIONS; i++)
+            {
+                rt_sem_release(perf_sem);
+            }
+            
+            // 等待线程完成
+            while (perf_counter < PERF_TEST_ITERATIONS)
+            {
+                rt_thread_delay(1);
+            }
+            PERF_END("Semaphore post/wait", PERF_TEST_ITERATIONS);
+        }
+        
+        rt_sem_delete(perf_sem);
+    }
+    
+    // 互斥锁性能测试
+    perf_mutex = rt_mutex_create("perf_mutex", RT_IPC_FLAG_FIFO);
+    if (perf_mutex)
+    {
+        perf_counter = 0;
+        
+        PERF_START();
+        for (int i = 0; i < PERF_TEST_ITERATIONS; i++)
+        {
+            rt_mutex_take(perf_mutex, RT_WAITING_FOREVER);
+            perf_counter++;
+            rt_mutex_release(perf_mutex);
+        }
+        PERF_END("Mutex lock/unlock", PERF_TEST_ITERATIONS);
+        
+        rt_mutex_delete(perf_mutex);
+    }
+    
+    // 邮箱性能测试
+    rt_mailbox_t perf_mb = rt_mb_create("perf_mb", 256, RT_IPC_FLAG_FIFO);
+    if (perf_mb)
+    {
+        PERF_START();
+        for (int i = 0; i < 1000; i++)
+        {
+            rt_mb_send(perf_mb, i);
+        }
+        
+        rt_ubase_t mail;
+        for (int i = 0; i < 1000; i++)
+        {
+            rt_mb_recv(perf_mb, &mail, RT_WAITING_NO);
+        }
+        PERF_END("Mailbox send/recv (1000 ops)", 1000);
+        
+        rt_mb_delete(perf_mb);
+    }
+    
+    // 消息队列性能测试
+    rt_mq_t perf_mq = rt_mq_create("perf_mq", 32, 256, RT_IPC_FLAG_FIFO);
+    if (perf_mq)
+    {
+        char msg[32] = "performance test message";
+        
+        PERF_START();
+        for (int i = 0; i < 1000; i++)
+        {
+            rt_mq_send(perf_mq, msg, sizeof(msg));
+        }
+        
+        char recv_buf[32];
+        for (int i = 0; i < 1000; i++)
+        {
+            rt_mq_recv(perf_mq, recv_buf, sizeof(recv_buf), RT_WAITING_NO);
+        }
+        PERF_END("Message queue send/recv (1000 ops)", 1000);
+        
+        rt_mq_delete(perf_mq);
+    }
+}
+
+// 定时器精度和性能测试
+static volatile rt_uint32_t timer_callback_counter = 0;
+static rt_tick_t timer_start_tick = 0;
+
+static void precision_timer_callback(void *parameter)
+{
+    timer_callback_counter++;
+    if (timer_callback_counter == 1)
+    {
+        timer_start_tick = rt_tick_get();
+    }
+}
+
+static void timer_performance_test(void)
+{
+    rt_kprintf("\n[Performance] Timer Performance Tests\n");
+    
+    // 定时器创建/删除性能
+    PERF_START();
+    for (int i = 0; i < 500; i++)
+    {
+        rt_timer_t timer = rt_timer_create("perf_tmr", precision_timer_callback,
+                                         RT_NULL, 10, RT_TIMER_FLAG_ONE_SHOT);
+        if (timer)
+        {
+            rt_timer_delete(timer);
+        }
+    }
+    PERF_END("Timer create/delete (500 ops)", 500);
+    
+    // 定时器精度测试
+    rt_kprintf("  Timer precision test (500 callbacks, 10ms interval):\n");
+    
+    timer_callback_counter = 0;
+    rt_timer_t precision_timer = rt_timer_create("prec_tmr", precision_timer_callback,
+                                               RT_NULL, 10, RT_TIMER_FLAG_PERIODIC);
+    if (precision_timer)
+    {
+        rt_timer_start(precision_timer);
+        
+        // 等待500次回调
+        while (timer_callback_counter < 500)
+        {
+            rt_thread_delay(1);
+        }
+        
+        rt_timer_stop(precision_timer);
+        rt_tick_t end_tick = rt_tick_get();
+        rt_tick_t total_elapsed = end_tick - timer_start_tick;
+        rt_tick_t expected_elapsed = 499 * 10;  // 499个间隔 * 10 tick
+        
+        rt_kprintf("    Expected: %d ticks, Actual: %d ticks\n", 
+                  (int)expected_elapsed, (int)total_elapsed);
+        rt_kprintf("    Precision: %d%% (deviation: %d ticks)\n",
+                  (int)(expected_elapsed * 100 / (total_elapsed ? total_elapsed : 1)),
+                  (int)(total_elapsed > expected_elapsed ? 
+                       total_elapsed - expected_elapsed : 
+                       expected_elapsed - total_elapsed));
+        
+        rt_timer_delete(precision_timer);
+    }
+}
+
+// 主性能测试函数
+int benchmark(void)
+{
+    rt_kprintf("==========================================\n");
+    rt_kprintf("      RT-Thread Performance Benchmark    \n");
+    rt_kprintf("==========================================\n");
+    rt_kprintf("System: RT-Thread 5.2\n");
+    rt_kprintf("CPU Frequency: %d Hz\n", SystemCoreClock);
+    rt_kprintf("Tick Frequency: %d Hz\n", RT_TICK_PER_SECOND);
+    rt_kprintf("Test Iterations: %d (small: %d)\n", PERF_TEST_ITERATIONS, PERF_TEST_SMALL_ITER);
+    rt_kprintf("==========================================\n");
+    
+    // 系统调用开销测试
+    syscall_overhead_test();
+    
+    // 内存分配性能测试
+    rt_kprintf("\n[Performance] Memory Management Tests\n");
+    memory_alloc_performance();
+    
+    // 线程调度性能测试
+    thread_scheduling_performance();
+    
+    // IPC性能测试
+    ipc_performance_test();
+    
+    // 定时器性能测试
+    timer_performance_test();
+    
+    rt_kprintf("\n==========================================\n");
+    rt_kprintf("         Performance Test Complete        \n");
+    rt_kprintf("==========================================\n");
+    
+    return 0;
+}
+MSH_CMD_EXPORT(benchmark, RT-Thread performance benchmark test)

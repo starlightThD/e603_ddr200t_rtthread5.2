@@ -1,0 +1,52 @@
+{
+ "cpu_config": {
+  "icache_size": "32768",
+  "icache-block-size": "64",
+  "dcache_size": "32768",
+  "dcache-block-size": "64",
+  "mmu": "sv39",
+  "pmp": "8",
+  "isa": "rv64imafcsu_zicsr_zicntr_zifencei_zicbom_zicboz_zicbop_zicond_smepmp_sv39_svvptc_svpbmt_sstc_sswi_xxlnice",
+  "core": "ux600f"
+ },
+ "general_config": {
+     "ddr": {
+         "base": "0x80000000",
+         "size": "0x80000000"
+     },
+     "norflash": {
+         "base": "0x20000000",
+         "size": "32M"
+     },
+     "iregion": {
+         "base": "0x18000000"
+     },
+     "eth0": {
+         "base": "0x10002000",
+         "irq": "8"
+     },
+     "uart0": {
+         "base": "0x10013000",
+         "irq": "33"
+     },
+     "qspi0": {
+         "base": "0x10014000",
+         "irq": "35"
+     },
+     "udma0": {
+         "base": "0x10015000",
+         "irq": "2"
+     },
+     "sdio0": {
+         "base": "0x10016000",
+         "irq": "9"
+     },
+     "qspi2": {
+         "base": "0x10034000",
+         "irq": "37"
+     },
+     "cpu_freq": "50000000",
+     "timer_freq": "32768",
+     "irqmax": "64"
+ }
+}

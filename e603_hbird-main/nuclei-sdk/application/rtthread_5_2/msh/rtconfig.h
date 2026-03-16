@@ -1,0 +1,108 @@
+#ifndef RT_CONFIG_H__
+#define RT_CONFIG_H__
+#define __RT_KERNEL_SOURCE__ // 内核直接编译声明标签
+
+// 硬件功能配置，保留
+#define RT_USING_HW_ATOMIC
+#define ARCH_RISCV
+#define ARCH_CPU_64BIT
+
+// rtthread标准版本重要内容，不建议调整
+#define RT_USING_COMPONENTS_INIT
+#define RT_USING_USER_MAIN
+#define RT_USING_MSH
+#define RT_USING_FINSH
+#define RT_USING_LIBC
+#define RT_USING_CACHE
+#define RT_USING_OVERFLOW_CHECK
+#define RT_USING_HOOK
+#define RT_USING_IDLE_HOOK
+#define RT_USING_TIMER_SOFT
+#define RT_USING_DM // 可以取消
+#define RT_USING_CONSOLE
+#define RT_MAIN_THREAD_STACK_SIZE 2048
+#define RT_MAIN_THREAD_PRIORITY 10
+#define RT_PAGE_AFFINITY_BLOCK_SIZE 0x1000
+#define RT_PAGE_MAX_ORDER 11
+#define FINSH_USING_MSH
+#define FINSH_THREAD_NAME "tshell"
+#define FINSH_THREAD_PRIORITY 20
+#define FINSH_THREAD_STACK_SIZE 4096
+#define FINSH_USING_HISTORY
+#define FINSH_HISTORY_LINES 5
+#define FINSH_USING_SYMTAB
+#define FINSH_CMD_SIZE 80
+#define MSH_USING_BUILT_IN_COMMANDS
+#define FINSH_USING_DESCRIPTION
+#define FINSH_ARG_MAX 10
+#define FINSH_USING_OPTION_COMPLETION
+#define RT_SYSTEM_WORKQUEUE_STACKSIZE 2048
+#define RT_SYSTEM_WORKQUEUE_PRIORITY 23
+#define O_DIRECTORY 0200000
+#define RT_NAME_MAX 16
+#define RT_CPUS_NR 1
+#define RT_ALIGN_SIZE 8
+#define RT_THREAD_PRIORITY_32
+#define RT_THREAD_PRIORITY_MAX 32
+#define RT_TICK_PER_SECOND 100
+#define RT_HOOK_USING_FUNC_PTR
+#define RT_IDLE_HOOK_LIST_SIZE 4
+#define IDLE_THREAD_STACK_SIZE 396
+#define RT_TIMER_THREAD_PRIO 4
+#define RT_TIMER_THREAD_STACK_SIZE 512
+#define RT_FDT_EARLYCON_MSG_SIZE 128
+#define RT_CONSOLEBUF_SIZE 128
+#define RT_CONSOLE_DEVICE_NAME "uart0"
+#define RT_VER_NUM 0x50201
+#define RT_BACKTRACE_LEVEL_MAX_NR 32
+#define RT_LIBC_USING_LIGHT_TZ_DST
+#define RT_LIBC_TZ_DEFAULT_HOUR 8
+#define RT_LIBC_TZ_DEFAULT_MIN 0
+#define RT_LIBC_TZ_DEFAULT_SEC 0
+
+// Nano版本最低功能，资源占用不多，不建议也并未尝试过禁用
+#define RT_USING_SEMAPHORE
+#define RT_USING_MUTEX
+#define RT_USING_EVENT
+#define RT_USING_MAILBOX
+#define RT_USING_MESSAGEQUEUE
+
+// 内存堆和内存池模块定义
+#define RT_USING_MEMPOOL
+#define RT_USING_SMALL_MEM
+#define RT_USING_SMALL_MEM_AS_HEAP
+#define RT_USING_HEAP
+#define RT_HEAP_SIZE        2048
+
+// 禁用调试检查功能以减少ilm使用，如果需要请选择性开启
+// 预计使用4008字节内存
+//#define RT_USING_DEBUG
+//#define RT_DEBUGING_ASSERT
+//#define RT_DEBUGING_COLOR
+//#define RT_DEBUGING_CONTEXT
+
+// 设备文件相关配置，开启后可以使用设备文件系统提供的驱动和功能
+// 注释后uart0将使用内核提供的裸机驱动，无法使用设备文件系统
+// 预计占用24208字节内存
+//#define RT_USING_DEVICE
+//#define RT_USING_DFS
+//#define RT_USING_DFS_V1
+//#define RT_USING_MEMHEAP
+//#define RT_USING_DFS_RAMFS
+//#define DFS_USING_POSIX
+//#define DFS_USING_WORKDIR
+//#define DFS_FD_MAX 16
+//#define DFS_FILESYSTEMS_MAX 4
+//#define DFS_FILESYSTEM_TYPES_MAX 4
+//#define RT_USING_DFS_DEVFS
+//#define RT_USING_DEVICE_IPC
+//#define RT_UNAMED_PIPE_NUMBER 64
+//#define RT_USING_SERIAL
+//#define RT_USING_SERIAL_V1
+
+// 备用uart0输出驱动，当没有启用设备模块时进行串口输出，启用设备模块后uart0使用设备文件系统提供的驱动
+#define BSP_USING_UART_CONSOLE
+#define BSP_USING_UART
+#define BSP_USING_UART0
+
+#endif

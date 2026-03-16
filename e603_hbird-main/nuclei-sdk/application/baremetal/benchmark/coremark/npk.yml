@@ -1,0 +1,108 @@
+## Package Base Information
+name: app-nsdk_coremark
+owner: nuclei
+version:
+description: Coremark Benchmark
+type: app
+keywords:
+  - baremetal
+  - benchmark
+category: baremetal application
+license: Apache-2.0
+homepage: https://www.eembc.org/coremark/
+
+## Package Dependency
+dependencies:
+  - name: sdk-nuclei_sdk
+    version:
+
+## Package Configurations
+configuration:
+
+## Set Configuration for other packages
+setconfig:
+  - config: stdclib
+    value: newlib_small
+
+## Source Code Management
+codemanage:
+  copyfiles:
+    - path: ["*.c", "*.h"]
+  incdirs:
+    - path: ["./"]
+  libdirs:
+  ldlibs:
+
+## Build Configuration
+buildconfig:
+  - type: common
+    cdefines:
+      - defines: FLAGS_STR=\""See compiler options passed in IDE"\"
+      - defines: ITERATIONS=800
+      - defines: PERFORMANCE_RUN=1
+  - type: gcc
+    common_flags: # flags need to be combined together across all packages
+      - flags: >-
+              -Ofast -fno-code-hoisting -fno-common -finline-functions -falign-functions=10
+              -falign-jumps=8 -falign-loops=8 -finline-limit=300 -fno-if-conversion -fno-if-conversion2
+              -fselective-scheduling -fno-tree-loop-distribute-patterns -funroll-loops -funroll-all-loops
+              -fno-delete-null-pointer-checks -mbranch-cost=1 --param fsm-scale-path-stmts=3
+              --param max-average-unrolled-insns=400 --param max-grow-copy-bb-insns=20 --param max-jump-thread-duplication-stmts=26
+              --param hot-bb-frequency-fraction=4 --param unroll-jam-min-percent=0
+        condition: $( ${cpu_series} == 200 )
+      - flags: >-
+              -Ofast -fno-code-hoisting -fno-common -finline-functions -falign-functions=6
+              -falign-jumps=6 -falign-loops=4 -finline-limit=200 -fno-if-conversion -fno-if-conversion2
+              -fselective-scheduling -fno-tree-loop-distribute-patterns -funroll-loops -funroll-all-loops
+              -fno-delete-null-pointer-checks -fno-rename-registers -mbranch-cost=1 --param fsm-scale-path-stmts=3
+              --param max-average-unrolled-insns=200 --param max-grow-copy-bb-insns=20 --param max-jump-thread-duplication-stmts=25
+              --param hot-bb-frequency-fraction=4
+        condition: $( ${cpu_series} == 300 )
+      - flags: >-
+              -Ofast -fno-version-loops-for-strides -ffloat-store -mbranch-cost=1 -mstrict-align -funroll-all-loops -finline-limit=500
+              -ftree-dominator-opts -funroll-loops -finline-functions -falign-functions=8
+              -falign-jumps=8 -falign-loops=6 -fno-if-conversion2 -fno-tree-loop-distribute-patterns -fno-tree-loop-ivcanon
+              --param=max-loop-header-insns=2 --param=unroll-jam-min-percent=0
+              --param max-jump-thread-duplication-stmts=12 --param fsm-scale-path-stmts=3 --param max-grow-copy-bb-insns=12
+        condition: $( ${cpu_series} == 600 ) && $( contains(${nuclei_core}, "x"))
+      - flags: >-
+              -Ofast -fno-version-loops-for-strides -ffloat-store -mbranch-cost=1 -mstrict-align -funroll-all-loops -finline-limit=300
+              -ftree-dominator-opts -funroll-loops -finline-functions -falign-functions=8
+              -falign-jumps=8 -falign-loops=8 -fipa-pta -fno-code-hoisting -fno-if-conversion
+              -fno-if-conversion2 -fno-tree-loop-distribute-patterns -fno-tree-loop-ivcanon
+              -ftree-vrp --param=max-loop-header-insns=2 --param=unroll-jam-min-percent=0
+              --param max-jump-thread-duplication-stmts=12 --param fsm-scale-path-stmts=3 --param max-grow-copy-bb-insns=12
+        condition: $( ${cpu_series} == 600 ) && $( ! contains(${nuclei_core}, "x"))
+      - flags: >-
+              -Ofast -fgcse-las -fno-code-hoisting -fipa-pta -mbranch-cost=1 -funroll-all-loops -finline-limit=300
+              -fno-crossjumping -fno-version-loops-for-strides
+              -fno-tree-sra -fno-tree-sink -fno-tree-partial-pre
+              -fno-shrink-wrap-separate -ffloat-store -funroll-loops -falign-functions=16
+              -falign-jumps=8 -falign-loops=6 -fno-if-conversion2 -fno-tree-loop-ivcanon
+              -fstack-protector -fno-tree-loop-distribute-patterns -fno-cse-follow-jumps -fno-sched-dep-count-heuristic --param loop-max-datarefs-for-datadeps=4
+              --param max-jump-thread-duplication-stmts=30 --param fsm-scale-path-stmts=3 --param max-grow-copy-bb-insns=12
+        condition: $( ${cpu_series} == 900 ) && $( contains(${nuclei_core}, "x"))
+      - flags: >-
+              -Ofast -mno-autovec-dsp -fno-shrink-wrap-separate -fno-tree-partial-pre -fno-version-loops-for-strides -mbranch-cost=1 -mstrict-align -funroll-all-loops -finline-limit=350
+              -fno-code-hoisting -fno-sched-last-insn-heuristic -fno-toplevel-reorder -fno-tree-copy-prop -fno-crossjumping -fno-bit-tests -ftree-dominator-opts -funroll-loops -finline-functions -falign-functions=4
+              -fno-ipa-bit-cp -falign-jumps=16 -falign-loops=8 -fno-if-conversion2 -fno-tree-loop-ivcanon
+              -fgcse-las --param=max-loop-header-insns=3 --param loop-max-datarefs-for-datadeps=6
+              --param max-jump-thread-duplication-stmts=58 --param fsm-scale-path-stmts=3 --param max-grow-copy-bb-insns=12
+        condition: $( ${cpu_series} == 900 ) && $( ! contains(${nuclei_core}, "x"))
+      - flags: >-
+              -Ofast -fgcse-las -ffloat-store -mbranch-cost=1 -mstrict-align -funroll-all-loops
+              -fno-if-conversion -ftree-dominator-opts -fno-selective-scheduling -finline-functions -falign-functions=12
+              -falign-jumps=8 -finline-limit=400 -fno-common -fno-tree-vectorize -fno-tree-loop-ivcanon
+              --param max-jump-thread-duplication-stmts=8 -fno-tree-partial-pre -fno-tree-copy-prop -fno-associative-math -ftrapping-math -fno-toplevel-reorder
+              -fstack-protector -fno-sched-last-insn-heuristic -fno-sched-dep-count-heuristic -fno-ipa-bit-cp -fno-function-cse
+              -fno-cse-follow-jumps -fno-crossjumping --param max-grow-copy-bb-insns=25
+        condition: $( ${cpu_series} == 1000 )
+  - type: clang
+    common_flags: # flags need to be combined together across all packages
+      - flags: -O3 -flto
+  - type: zcc
+    common_flags: # flags need to be combined together across all packages
+      - flags: -O3 -flto -falign-functions=4 -falign-loops=4 -flate-loop-unroll -malign-branch
+    ldflags:
+      - flags: -Wl,-mllvm,--align-all-nofallthru-blocks=2
+
