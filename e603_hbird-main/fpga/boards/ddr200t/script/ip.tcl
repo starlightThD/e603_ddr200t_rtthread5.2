@@ -19,7 +19,7 @@ set_property -dict [list \
   ] [get_ips reset_sys]
 
 if ($env(DDR3_EN)) {
-create_ip -vendor xilinx.com -library ip -name mig_7series -version 4.2 -module_name ddr3 -dir $ipdir -force
+create_ip -vendor xilinx.com -library ip -name mig_7series -module_name ddr3 -dir $ipdir -force
 set_property CONFIG.XML_INPUT_FILE [file normalize $scriptdir/mig_a.prj
   ] [get_ips ddr3]
 }
